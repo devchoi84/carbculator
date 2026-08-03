@@ -66,7 +66,12 @@ struct StepPage<Content: View>: View {
                 .padding(.top, 24)
 
             Spacer(minLength: 0)
-
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 다음 버튼은 하단 safe area에 고정한다. 이렇게 하면 키보드가 올라올 때
+        // 버튼이 키보드 위로 함께 밀려 올라가 항상 탭할 수 있다.
+        .safeAreaInset(edge: .bottom) {
             if let onNext {
                 Button(action: onNext) {
                     Text(nextTitle)
@@ -76,10 +81,10 @@ struct StepPage<Content: View>: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .disabled(!isNextEnabled)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
             }
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
