@@ -10,7 +10,6 @@ import SwiftUI
 struct CalculatorView: View {
     private enum Step: Int {
         case bloodGlucose
-        case hypoWarning
         case meal
         case result
     }
@@ -78,7 +77,6 @@ struct CalculatorView: View {
     private var stepContent: some View {
         switch step {
         case .bloodGlucose: bloodGlucosePage
-        case .hypoWarning: hypoWarningPage
         case .meal: mealPage
         case .result: resultPage
         }
@@ -106,12 +104,10 @@ struct CalculatorView: View {
             nextTitle: lang.t("다음", "Next"),
             isNextEnabled: bgValue != nil,
             onNext: {
-                guard let bg = bgValue else { return }
-                if bg <= InsulinCalculator.hypoThresholdBG {
-                    advance(to: .hypoWarning)
-                } else {
-                    advance(to: .meal)
-                }
+                guard bgValue != nil else { return }
+                // 저혈당이어도 막지 않고 진행한다. 낮은 혈당은 교정 인슐린으로
+                // 권장량에 자동 반영되며, 결과 화면에서 저혈당 주의를 안내한다.
+                advance(to: .meal)
             }
         ) {
             VStack(alignment: .leading, spacing: 12) {
@@ -127,37 +123,7 @@ struct CalculatorView: View {
         }
     }
 
-    // MARK: 2) 저혈당 경고 (혈당 70 이하 시 계산 차단)
-
-    private var hypoWarningPage: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.red)
-            Text(lang.t("저혈당 위험", "Low Blood Glucose"))
-                .font(.title.bold())
-            Text(lang.t("현재 혈당이 \(InsulinCalculator.hypoThresholdBG.display) mg/dL 이하입니다.\n인슐린 계산을 중단하세요.\n\n즉시 단순당 15~20g을 섭취하세요.\n(주스 반 컵, 사탕 3~4개, 설탕물 등)\n\n15분 후 혈당을 다시 측정해 주세요.",
-                        "Your blood glucose is at or below \(InsulinCalculator.hypoThresholdBG.display) mg/dL.\nStop the insulin calculation.\n\nTake 15–20g of fast-acting sugar now.\n(half a cup of juice, 3–4 candies, sugar water)\n\nRe-check your blood glucose in 15 minutes."))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button {
-                bgText = ""
-                goBack(to: .bloodGlucose)
-            } label: {
-                Text(lang.t("혈당 다시 측정하기", "Re-check blood glucose"))
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            .controlSize(.large)
-        }
-        .padding(24)
-    }
-
-    // MARK: 3) 식사량 입력
+    // MARK: 2) 식사량 입력
 
     private var mealPage: some View {
         StepPage(
@@ -206,7 +172,7 @@ struct CalculatorView: View {
         }
     }
 
-    // MARK: 4) 결과
+    // MARK: 3) 결과
 
     private var resultPage: some View {
         ScrollView {
@@ -232,6 +198,10 @@ struct CalculatorView: View {
 
     @ViewBuilder
     private func resultContent(_ result: BolusResult) -> some View {
+        if let bg = bgValue, bg <= InsulinCalculator.hypoThresholdBG {
+            hypoNotice(bg: bg)
+        }
+
         VStack(spacing: 8) {
             Text(lang.t("권장 인슐린", "Suggested insulin"))
                 .font(.subheadline)
@@ -313,6 +283,26 @@ struct CalculatorView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
+    }
+
+    /// 저혈당 범위(혈당 ≤ 임계값)에서 결과 화면 상단에 표시하는 주의 안내.
+    /// 교정(ISF) 사용 여부에 따라 안내 문구가 달라진다.
+    private func hypoNotice(bg: Double) -> some View {
+        let text: String
+        if correctionEnabled {
+            // 교정 인슐린이 켜져 있으면 낮은 혈당이 권장량에 자동 반영(감량)된다.
+            text = lang.t(
+                "현재 혈당(\(bg.display) mg/dL)이 저혈당 범위입니다. 아래 권장량은 낮은 혈당을 반영해 자동으로 줄여 계산되었습니다.\n\n일반적으로는 단순당 15~20g으로 저혈당을 먼저 처치한 뒤 식사하는 것이 안전합니다. 저혈당 처치 후 식사를 시작하면서 투여하고, 반드시 담당 의료진의 지침을 따르세요.",
+                "Your blood glucose (\(bg.display) mg/dL) is in the hypoglycemia range. The dose below has been automatically reduced to account for your low reading.\n\nIt's generally safer to treat the low with 15–20 g of fast-acting sugar first, then eat. Inject as you start eating after treating the low, and always follow your care team's guidance."
+            )
+        } else {
+            // 교정이 꺼져 있으면 자동 감량이 되지 않으므로 더 강하게 경고한다.
+            text = lang.t(
+                "현재 혈당(\(bg.display) mg/dL)이 저혈당 범위입니다. 교정 인슐린이 꺼져 있어 권장량이 낮은 혈당에 맞게 자동으로 줄어들지 않았습니다.\n\n단순당 15~20g으로 저혈당을 먼저 처치하고, 투여량을 줄이거나 미루는 것을 담당 의료진과 상의하세요.",
+                "Your blood glucose (\(bg.display) mg/dL) is in the hypoglycemia range. Correction is turned off, so the dose was NOT automatically reduced for your low reading.\n\nTreat the low with 15–20 g of fast-acting sugar first, and consult your care team about lowering or delaying the dose."
+            )
+        }
+        return NoticeBox(icon: "exclamationmark.triangle.fill", text: text, tint: .red)
     }
 
     private func detailRow(_ label: String, _ value: String) -> some View {
