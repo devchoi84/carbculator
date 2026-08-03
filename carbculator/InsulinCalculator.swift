@@ -64,6 +64,10 @@ enum InsulinCalculator {
     /// 이 값 이하의 혈당에서는 계산을 중단하고 저혈당 경고를 표시한다
     static let hypoThresholdBG: Double = 70
 
+    /// 이 값을 초과하는 권장량은 입력 오류(예: 탄수화물 자릿수 실수) 가능성이 있어
+    /// 결과 화면에서 입력값 재확인을 안내한다. (계산 자체를 막지는 않는다)
+    static let highDoseWarningU: Double = 20
+
     /// 음식 무게(g)를 탄수화물(g)로 변환
     static func carbs(foodWeight: Double, food: FoodType) -> Double {
         foodWeight * food.carbsPer100g / 100

@@ -428,6 +428,15 @@ struct CalculatorView: View {
         .padding(.vertical, 24)
         .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 16))
 
+        if result.totalRounded >= InsulinCalculator.highDoseWarningU {
+            NoticeBox(
+                icon: "exclamationmark.triangle.fill",
+                text: lang.t("권장량이 \(result.totalRounded.display) U로 평소보다 높습니다. 탄수화물·혈당 등 입력값을 다시 확인해 주세요. 실제 투여는 반드시 담당 의료진의 지침을 따르세요.",
+                             "The suggested dose (\(result.totalRounded.display) U) is unusually high. Please double-check your inputs (carbs, glucose). Always follow your care team's guidance for actual dosing."),
+                tint: .red
+            )
+        }
+
         VStack(spacing: 0) {
             detailRow(lang.t("섭취 탄수화물", "Carbs"), "\(result.carbs.display1) g")
             Divider()
