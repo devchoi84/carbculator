@@ -41,7 +41,13 @@ struct CalculatorView: View {
     @State private var searchResults: [FoodItem] = []
     @State private var isSearching = false
     @State private var searchFailed = false
-    @State private var selectedFoodName: String?
+    @State private var selectedFoods: [SelectedFood] = []
+
+    /// 한 끼에 선택한 음식 한 건. 같은 음식을 여러 번 담을 수 있도록 고유 id를 부여한다.
+    private struct SelectedFood: Identifiable, Equatable {
+        let id = UUID()
+        let item: FoodItem
+    }
 
     private var lang: AppLanguage { AppLanguage(rawValue: languageRaw) ?? .korean }
 
@@ -173,15 +179,14 @@ struct CalculatorView: View {
                         searchResultList
                     }
 
-                    NumberInputField(placeholder: lang.t("탄수화물", "Carbs"),
-                                     unit: "g", text: $carbsText)
-                    if let name = selectedFoodName {
-                        Text(lang.t("선택한 음식: \(name)", "Selected: \(name)"))
-                            .font(.caption)
-                            .foregroundStyle(.blue)
+                    if !selectedFoods.isEmpty {
+                        selectedFoodsList
                     }
-                    Text(lang.t("자동 입력된 값은 100g 기준입니다. 실제 드시는 양에 맞게 조정하세요.",
-                                "The auto-filled value is per 100 g. Adjust it to the amount you actually eat."))
+
+                    NumberInputField(placeholder: lang.t("탄수화물 (합계)", "Carbs (total)"),
+                                     unit: "g", text: $carbsText)
+                    Text(lang.t("각 음식은 100g 기준으로 합산됩니다. 실제 드시는 양에 맞게 조정하세요.",
+                                "Each food is summed on a per-100 g basis. Adjust to the amount you actually eat."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -251,11 +256,53 @@ struct CalculatorView: View {
         .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 
+    // 선택한 음식 목록 (탄수화물 합계에 반영됨)
+    private var selectedFoodsList: some View {
+        VStack(spacing: 0) {
+            ForEach(selectedFoods) { sel in
+                HStack {
+                    Text(sel.item.name)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text("\(sel.item.carbsPer100g.display1) g")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        removeFood(sel)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                if sel.id != selectedFoods.last?.id {
+                    Divider()
+                }
+            }
+        }
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+    }
+
     private func selectFood(_ item: FoodItem) {
-        carbsText = item.carbsPer100g.display1
-        selectedFoodName = item.name
+        selectedFoods.append(SelectedFood(item: item))
+        syncCarbsFromFoods()
+        // 다음 음식을 바로 검색할 수 있도록 검색어·결과를 비운다. (키보드는 유지)
+        foodQuery = ""
         searchResults = []
-        hideKeyboard()
+    }
+
+    private func removeFood(_ sel: SelectedFood) {
+        selectedFoods.removeAll { $0.id == sel.id }
+        syncCarbsFromFoods()
+    }
+
+    /// 선택 음식들의 탄수화물 합계를 탄수화물 입력창에 반영한다.
+    private func syncCarbsFromFoods() {
+        let total = selectedFoods.reduce(0) { $0 + $1.item.carbsPer100g }
+        carbsText = selectedFoods.isEmpty ? "" : total.display1
     }
 
     /// 검색어 변경 시 디바운스 후 API를 호출한다. (`.task(id:)`가 이전 호출을 취소)
@@ -273,7 +320,6 @@ struct CalculatorView: View {
 
         isSearching = true
         searchFailed = false
-        selectedFoodName = nil
         do {
             let items = try await FoodSearchService.search(q)
             if Task.isCancelled { return }
@@ -471,7 +517,7 @@ struct CalculatorView: View {
         foodQuery = ""
         searchResults = []
         searchFailed = false
-        selectedFoodName = nil
+        selectedFoods = []
         advance(to: .bloodGlucose)
     }
 }
