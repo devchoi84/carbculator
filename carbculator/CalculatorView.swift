@@ -34,9 +34,14 @@ struct CalculatorView: View {
     // 입력값
     @State private var bgText = ""
     @State private var inputMode: MealInputMode = .food
-    @State private var selectedFood: FoodType = .whiteRice
-    @State private var weightText = ""
     @State private var carbsText = ""
+
+    // 음식 검색 상태
+    @State private var foodQuery = ""
+    @State private var searchResults: [FoodItem] = []
+    @State private var isSearching = false
+    @State private var searchFailed = false
+    @State private var selectedFoodName: String?
 
     private var lang: AppLanguage { AppLanguage(rawValue: languageRaw) ?? .korean }
 
@@ -128,48 +133,157 @@ struct CalculatorView: View {
     private var mealPage: some View {
         StepPage(
             title: lang.t("무엇을 드시나요?", "What are you eating?"),
-            subtitle: lang.t("음식 무게를 입력하면 탄수화물 양을 자동으로 계산합니다.",
-                             "Enter the food weight and we'll estimate the carbs."),
+            subtitle: lang.t("음식을 검색해 선택하면 100g당 탄수화물이 자동으로 입력됩니다.",
+                             "Search and pick a food to auto-fill its carbs per 100g."),
             nextTitle: lang.t("다음", "Next"),
             isNextEnabled: carbsValue != nil,
             onNext: { advance(to: .result) }
         ) {
             VStack(alignment: .leading, spacing: 16) {
                 Picker(lang.t("입력 방식", "Input mode"), selection: $inputMode) {
-                    Text(lang.t("음식으로 입력", "By food")).tag(MealInputMode.food)
+                    Text(lang.t("음식 검색", "Search food")).tag(MealInputMode.food)
                     Text(lang.t("탄수화물 직접 입력", "Carbs directly")).tag(MealInputMode.carbs)
                 }
                 .pickerStyle(.segmented)
 
                 if inputMode == .food {
-                    HStack {
-                        Text(lang.t("음식 종류", "Food"))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Picker(lang.t("음식 종류", "Food"), selection: $selectedFood) {
-                            ForEach(FoodType.allCases) { food in
-                                Text(food.name(lang)).tag(food)
-                            }
+                    foodSearchField
+
+                    Label(lang.t("식품의약품안전처(식약처) 식품영양성분 데이터베이스 기반",
+                                 "Powered by the Korea MFDS food nutrition database"),
+                          systemImage: "checkmark.seal.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    if isSearching {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text(lang.t("검색 중…", "Searching…"))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
-                        .labelsHidden()
+                    } else if searchFailed {
+                        Text(lang.t("검색에 실패했습니다. 잠시 후 다시 시도하거나 탄수화물을 직접 입력하세요.",
+                                    "Search failed. Try again later or enter carbs directly."))
+                            .font(.footnote)
+                            .foregroundStyle(.red)
                     }
-                    .padding(.horizontal, 4)
 
-                    NumberInputField(placeholder: lang.t("섭취량", "Amount"),
-                                     unit: "g", text: $weightText)
+                    if !searchResults.isEmpty {
+                        searchResultList
+                    }
 
-                    if let carbs = carbsValue {
-                        Text(lang.t("계산된 탄수화물: 약 \(carbs.display1) g",
-                                    "Estimated carbs: ≈ \(carbs.display1) g"))
-                            .font(.subheadline)
+                    NumberInputField(placeholder: lang.t("탄수화물", "Carbs"),
+                                     unit: "g", text: $carbsText)
+                    if let name = selectedFoodName {
+                        Text(lang.t("선택한 음식: \(name)", "Selected: \(name)"))
+                            .font(.caption)
                             .foregroundStyle(.blue)
                     }
+                    Text(lang.t("자동 입력된 값은 100g 기준입니다. 실제 드시는 양에 맞게 조정하세요.",
+                                "The auto-filled value is per 100 g. Adjust it to the amount you actually eat."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } else {
                     NumberInputField(placeholder: lang.t("탄수화물", "Carbs"),
                                      unit: "g", text: $carbsText)
                 }
             }
+            .task(id: foodQuery) { await performFoodSearch() }
         }
+    }
+
+    // 음식 검색 입력 필드
+    private var foodSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(lang.t("음식 검색 (예: 쌀밥, 닭가슴살)", "Search food (e.g. rice)"),
+                      text: $foodQuery)
+            if !foodQuery.isEmpty {
+                Button {
+                    foodQuery = ""
+                    searchResults = []
+                    searchFailed = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding()
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    // 검색 결과 리스트 (상위 8건)
+    private var searchResultList: some View {
+        let shown = Array(searchResults.prefix(8))
+        return VStack(spacing: 0) {
+            ForEach(shown) { item in
+                Button {
+                    selectFood(item)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.name)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                            Text(lang.t("탄수화물 \(item.carbsPer100g.display1) g / 100g",
+                                        "Carbs \(item.carbsPer100g.display1) g / 100g"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "plus.circle")
+                            .foregroundStyle(.blue)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if item.id != shown.last?.id {
+                    Divider()
+                }
+            }
+        }
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func selectFood(_ item: FoodItem) {
+        carbsText = item.carbsPer100g.display1
+        selectedFoodName = item.name
+        searchResults = []
+        hideKeyboard()
+    }
+
+    /// 검색어 변경 시 디바운스 후 API를 호출한다. (`.task(id:)`가 이전 호출을 취소)
+    private func performFoodSearch() async {
+        let q = foodQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else {
+            searchResults = []
+            searchFailed = false
+            isSearching = false
+            return
+        }
+        // 디바운스: 입력이 이어지면 이 태스크가 취소되어 여기서 빠져나간다.
+        do { try await Task.sleep(nanoseconds: 300_000_000) }
+        catch { return }
+
+        isSearching = true
+        searchFailed = false
+        selectedFoodName = nil
+        do {
+            let items = try await FoodSearchService.search(q)
+            if Task.isCancelled { return }
+            searchResults = items
+        } catch {
+            if Task.isCancelled { return }   // 다음 검색으로 대체된 경우
+            searchResults = []
+            searchFailed = true
+        }
+        isSearching = false
     }
 
     // MARK: 3) 결과
@@ -331,14 +445,10 @@ struct CalculatorView: View {
     }
 
     private var carbsValue: Double? {
-        switch inputMode {
-        case .food:
-            guard let weight = weightText.parsedDouble, weight > 0 else { return nil }
-            return InsulinCalculator.carbs(foodWeight: weight, food: selectedFood)
-        case .carbs:
-            guard let carbs = carbsText.parsedDouble, carbs > 0 else { return nil }
-            return carbs
-        }
+        // 두 모드 모두 최종적으로 탄수화물 입력값(carbsText)을 사용한다.
+        // 음식 검색 모드에서는 선택 시 100g당 값이 자동 입력되며, 사용자가 조정할 수 있다.
+        guard let carbs = carbsText.parsedDouble, carbs > 0 else { return nil }
+        return carbs
     }
 
     // MARK: - 페이지 이동
@@ -357,8 +467,11 @@ struct CalculatorView: View {
 
     private func restart() {
         bgText = ""
-        weightText = ""
         carbsText = ""
+        foodQuery = ""
+        searchResults = []
+        searchFailed = false
+        selectedFoodName = nil
         advance(to: .bloodGlucose)
     }
 }

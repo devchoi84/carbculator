@@ -47,7 +47,8 @@ People on insulin have to calculate their dose at every meal. Carbculator does t
 | 💉 **교정 인슐린 옵션** | ISF를 모르면 교정 없이 식사 인슐린만 계산 가능 · 언제든 설정에서 켜기/끄기 |
 | 🌐 **한국어 / English** | 앱 내 즉시 언어 전환 (시스템 언어와 독립) |
 | 🎞️ **단계별 플로우 UI** | 질문 하나씩, 부드러운 페이지 전환으로 입력 부담 최소화 |
-| 🔒 **온전한 로컬 저장** | 모든 설정은 `@AppStorage`(UserDefaults)로 기기에만 저장 · 서버·계정·네트워크 없음 |
+| 🔍 **음식 검색 (식약처 DB)** | 음식명을 검색하면 식약처 식품영양성분 API로 100g당 탄수화물을 가져와 자동 입력 |
+| 🔒 **로컬 우선 저장** | 모든 설정은 `@AppStorage`(UserDefaults)로 기기에만 저장 · 계정 없음 (음식 검색 시에만 검색어가 외부 API로 전송) |
 
 ---
 
@@ -149,6 +150,18 @@ open carbculator.xcodeproj   # Xcode에서 열기
 ```
 Xcode에서 시뮬레이터나 실기기를 선택하고 **⌘R** 로 실행하세요.
 
+### 음식 검색 API 키 설정 · Food search API key
+음식 검색 기능은 식약처(공공데이터포털) 서비스키가 필요하며, 키 파일은 보안을 위해
+`.gitignore` 처리되어 저장소에 포함되지 않습니다. 아래 파일을 만들어 발급받은
+**인코딩(Encoding) 서비스키**를 넣으세요. (템플릿: `FoodAPIConfig.example.swift`)
+```swift
+// carbculator/FoodAPIConfig.swift
+enum FoodAPIConfig {
+    static let serviceKeyEncoded = "YOUR_ENCODED_SERVICE_KEY_HERE"
+}
+```
+> 서비스키는 [공공데이터포털](https://www.data.go.kr)에서 **식품영양성분DB**(`FoodNtrCpntDbInfo02`) 활용신청 후 발급받습니다.
+
 ---
 
 ## 🍚 음식 탄수화물 기준값 · Carb reference (per 100 g)
@@ -168,9 +181,11 @@ Xcode에서 시뮬레이터나 실기기를 선택하고 **⌘R** 로 실행하�
 
 ## 🔐 개인정보 · Privacy
 
-Carbculator는 **계정·서버·네트워크 통신이 없습니다.** 입력한 혈당·식사·설정값은 모두 기기 내부(UserDefaults)에만 저장되며 외부로 전송되지 않습니다.
+Carbculator는 **계정·자체 서버가 없습니다.** 입력한 혈당·식사·설정값은 모두 기기 내부(UserDefaults)에만 저장됩니다.
 
-No accounts, no servers, no network. Everything stays on your device.
+단, **음식 검색 기능을 사용할 때만** 입력한 검색어가 식약처(공공데이터포털) 식품영양성분 API로 전송됩니다(HTTPS). 개인 식별 정보나 혈당·인슐린 값은 전송되지 않으며, 검색을 사용하지 않으면 앱은 완전히 오프라인으로 동작합니다.
+
+No accounts and no first-party server. Everything is stored on your device. Only the **food search** feature sends your search term to the Korea MFDS public nutrition API (over HTTPS); no personal, glucose, or insulin data is transmitted.
 
 ---
 
