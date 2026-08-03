@@ -55,20 +55,24 @@ struct StepPage<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.title.bold())
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        // 콘텐츠를 스크롤 가능하게 감싼다. 요약 화면처럼 안내 문구가 길어 화면을
+        // 넘기는 경우에도 텍스트가 잘리지 않고 스크롤로 전체가 보인다.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.title.bold())
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
-            content
-                .padding(.top, 24)
-
-            Spacer(minLength: 0)
+                content
+                    .padding(.top, 24)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 내용이 화면보다 짧으면 불필요한 바운스를 막는다.
+        .scrollBounceBehavior(.basedOnSize)
         // 다음 버튼은 하단 safe area에 고정한다. 이렇게 하면 키보드가 올라올 때
         // 버튼이 키보드 위로 함께 밀려 올라가 항상 탭할 수 있다.
         .safeAreaInset(edge: .bottom) {
@@ -155,6 +159,8 @@ struct NoticeBox: View {
             Text(text)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                // 세로로 압축되어 말줄임 처리되지 않도록 필요한 높이를 항상 확보한다.
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
