@@ -57,9 +57,10 @@ enum FoodSearchService {
         }
 
         let mapped = (decoded.body?.items ?? []).compactMap { $0.toFoodItem() }
-        // FOOD_CD 중복 제거(제공량 변형 등) + 관련도 정렬
-        var seen = Set<String>()
-        let unique = mapped.filter { seen.insert($0.id).inserted }
+        // 같은 이름은 하나만 남긴다. (같은 음식인데 탄수화물만 다른 중복 제거)
+        // API가 먼저 반환한(대표) 값을 남기도록 정렬 전에 이름 기준으로 중복을 거른다.
+        var seenNames = Set<String>()
+        let unique = mapped.filter { seenNames.insert($0.name).inserted }
         // 정렬: (관련도 단계, 이름 길이, 이름) 순 → 동점이면 짧은 이름(대표 음식)을 우선
         return unique.sorted { sortKey($0.name, trimmed) < sortKey($1.name, trimmed) }
     }
