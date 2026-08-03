@@ -30,6 +30,7 @@ struct CalculatorView: View {
     @State private var step: Step = .bloodGlucose
     @State private var isForward = true
     @State private var showSettings = false
+    @State private var showHistory = false
 
     // 입력값
     @State private var bgText = ""
@@ -47,6 +48,13 @@ struct CalculatorView: View {
     private struct SelectedFood: Identifiable, Equatable {
         let id = UUID()
         let item: FoodItem
+        var weightText: String = "100"   // 섭취량(g), 기본 100g
+
+        /// 이 음식의 탄수화물(g) = 무게(g) × (100g당 탄수화물) ÷ 100
+        var carbs: Double {
+            let weight = weightText.parsedDouble ?? 0
+            return weight / 100 * item.carbsPer100g
+        }
     }
 
     private var lang: AppLanguage { AppLanguage(rawValue: languageRaw) ?? .korean }
@@ -78,6 +86,9 @@ struct CalculatorView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showHistory) {
+                HistoryView()
             }
         }
     }
@@ -143,7 +154,10 @@ struct CalculatorView: View {
                              "Search and pick a food to auto-fill its carbs per 100g."),
             nextTitle: lang.t("다음", "Next"),
             isNextEnabled: carbsValue != nil,
-            onNext: { advance(to: .result) }
+            onNext: {
+                saveHistory()
+                advance(to: .result)
+            }
         ) {
             VStack(alignment: .leading, spacing: 16) {
                 Picker(lang.t("입력 방식", "Input mode"), selection: $inputMode) {
@@ -185,8 +199,8 @@ struct CalculatorView: View {
 
                     NumberInputField(placeholder: lang.t("탄수화물 (합계)", "Carbs (total)"),
                                      unit: "g", text: $carbsText)
-                    Text(lang.t("각 음식은 100g 기준으로 합산됩니다. 실제 드시는 양에 맞게 조정하세요.",
-                                "Each food is summed on a per-100 g basis. Adjust to the amount you actually eat."))
+                    Text(lang.t("각 음식의 섭취량(g)을 조정하면 탄수화물 합계가 자동으로 갱신됩니다.",
+                                "Adjust each food's amount (g) and the total carbs update automatically."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -195,6 +209,7 @@ struct CalculatorView: View {
                 }
             }
             .task(id: foodQuery) { await performFoodSearch() }
+            .onChange(of: selectedFoods) { syncCarbsFromFoods() }
         }
     }
 
@@ -256,27 +271,47 @@ struct CalculatorView: View {
         .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // 선택한 음식 목록 (탄수화물 합계에 반영됨)
+    // 선택한 음식 목록 (섭취량 조절 + 탄수화물 합계 반영)
     private var selectedFoodsList: some View {
         VStack(spacing: 0) {
-            ForEach(selectedFoods) { sel in
-                HStack {
-                    Text(sel.item.name)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Text("\(sel.item.carbsPer100g.display1) g")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button {
-                        removeFood(sel)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+            ForEach($selectedFoods) { $sel in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(sel.item.name)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Spacer(minLength: 8)
+                        Button {
+                            removeFood(sel)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    HStack(spacing: 6) {
+                        Text(lang.t("섭취량", "Amount"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("100", text: $sel.weightText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 64)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(Color(.tertiarySystemBackground),
+                                        in: RoundedRectangle(cornerRadius: 8))
+                        Text("g")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(lang.t("탄수화물 \(sel.carbs.display1) g", "Carbs \(sel.carbs.display1) g"))
+                            .font(.subheadline)
+                            .foregroundStyle(.blue)
+                    }
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
                 .padding(.horizontal, 12)
                 if sel.id != selectedFoods.last?.id {
                     Divider()
@@ -301,8 +336,23 @@ struct CalculatorView: View {
 
     /// 선택 음식들의 탄수화물 합계를 탄수화물 입력창에 반영한다.
     private func syncCarbsFromFoods() {
-        let total = selectedFoods.reduce(0) { $0 + $1.item.carbsPer100g }
+        let total = selectedFoods.reduce(0) { $0 + $1.carbs }
         carbsText = selectedFoods.isEmpty ? "" : total.display1
+    }
+
+    /// 계산이 유효할 때 이번 식사·인슐린 내역을 저장한다. (다음 단계로 넘어갈 때 1회)
+    private func saveHistory() {
+        guard let bg = bgValue, let carbs = carbsValue,
+              let result = InsulinCalculator.calculate(
+                  carbs: carbs, currentBG: bg, targetBG: targetBG,
+                  icr: icr, isf: isf, penIncrement: penIncrement,
+                  correctionEnabled: correctionEnabled
+              ) else { return }
+        let foods = selectedFoods.map { food -> String in
+            let w = (food.weightText.parsedDouble ?? 0).display1
+            return "\(food.item.name) \(w)g"
+        }
+        MealHistoryStore.add(MealRecord(foods: foods, carbs: carbs, insulin: result.totalRounded))
     }
 
     /// 검색어 변경 시 디바운스 후 API를 호출한다. (`.task(id:)`가 이전 호출을 취소)
@@ -423,6 +473,16 @@ struct CalculatorView: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+
+        Button {
+            showHistory = true
+        } label: {
+            Text(lang.t("산출내역 보기", "View history"))
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
         .controlSize(.large)
     }
 
@@ -594,6 +654,21 @@ struct SettingsView: View {
                         Text("0.5 U").tag(0.5)
                     }
                     .pickerStyle(.segmented)
+                }
+                Section {
+                    Link(destination: URL(string: "mailto:maroon.choi@gmail.com")!) {
+                        LabeledContent {
+                            Text("maroon.choi@gmail.com")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label(lang.t("문의하기", "Contact"), systemImage: "envelope")
+                        }
+                    }
+                } header: {
+                    Text(lang.t("문의", "Contact"))
+                } footer: {
+                    Text(lang.t("의견이나 문제를 이메일로 보내주세요.",
+                                "Send feedback or report issues by email."))
                 }
                 Section {
                     Button(lang.t("초기 설정 다시 하기", "Redo initial setup"), role: .destructive) {

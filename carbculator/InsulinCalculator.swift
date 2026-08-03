@@ -14,6 +14,7 @@ enum SettingsKeys {
     static let penIncrement = "settings.penIncrement"
     static let correctionEnabled = "settings.correctionEnabled"
     static let isOnboarded = "settings.isOnboarded"
+    static let disclaimerHidden = "settings.disclaimerHidden"
 }
 
 // MARK: - 음식 종류
