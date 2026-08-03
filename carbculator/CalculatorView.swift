@@ -26,11 +26,13 @@ struct CalculatorView: View {
     @AppStorage(SettingsKeys.penIncrement) private var penIncrement = 1.0
     @AppStorage(SettingsKeys.correctionEnabled) private var correctionEnabled = true
     @AppStorage(SettingsKeys.language) private var languageRaw = AppLanguage.korean.rawValue
+    @AppStorage(SettingsKeys.resultDisclaimerShown) private var resultDisclaimerShown = false
 
     @State private var step: Step = .bloodGlucose
     @State private var isForward = true
     @State private var showSettings = false
     @State private var showHistory = false
+    @State private var showResultDisclaimer = false
 
     // 입력값
     @State private var bgText = ""
@@ -89,6 +91,12 @@ struct CalculatorView: View {
             }
             .sheet(isPresented: $showHistory) {
                 HistoryView()
+            }
+            .alert(lang.t("참고용 안내", "Please note"), isPresented: $showResultDisclaimer) {
+                Button(lang.t("확인", "OK")) { resultDisclaimerShown = true }
+            } message: {
+                Text(lang.t("이 권장량은 참고용입니다. 실제 인슐린 투여는 반드시 담당 의료진의 처방과 지침에 따르세요.",
+                            "This suggestion is for reference only. Always follow your doctor's prescription and guidance for actual insulin dosing."))
             }
         }
     }
@@ -427,6 +435,12 @@ struct CalculatorView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 16))
+        .onAppear {
+            // 첫 계산 결과에서만 참고용 안내를 1회 표시한다.
+            if !resultDisclaimerShown {
+                showResultDisclaimer = true
+            }
+        }
 
         if result.totalRounded >= InsulinCalculator.highDoseWarningU {
             NoticeBox(
