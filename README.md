@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🩸 Carbculator
+# 🩸 Carb·culator
+
+**Carb**(탄수화물) + cal**culator**(계산기) = **탄수화물 계산기**
 
 ### 탄수화물 계수 기반 인슐린 볼러스 계산기
 **Carb-ratio based insulin bolus calculator for people with diabetes**
