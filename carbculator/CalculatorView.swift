@@ -236,9 +236,9 @@ struct CalculatorView: View {
         .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // 검색 결과 리스트 (상위 8건)
+    // 검색 결과 리스트 (상위 10건)
     private var searchResultList: some View {
-        let shown = Array(searchResults.prefix(8))
+        let shown = Array(searchResults.prefix(10))
         return VStack(spacing: 0) {
             ForEach(shown) { item in
                 Button {

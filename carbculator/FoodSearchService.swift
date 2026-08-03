@@ -26,7 +26,7 @@ enum FoodSearchService {
 
     /// 음식명으로 검색한다. 결과는 정확일치·접두어 우선으로 정렬된다.
     /// - Note: 취소된 경우 `CancellationError`를 던진다(호출부에서 무시하면 됨).
-    static func search(_ query: String, numOfRows: Int = 25) async throws -> [FoodItem] {
+    static func search(_ query: String, numOfRows: Int = 100) async throws -> [FoodItem] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty,
               let encodedName = trimmed.addingPercentEncoding(withAllowedCharacters: .foodQueryAllowed)
@@ -60,13 +60,24 @@ enum FoodSearchService {
         // FOOD_CD 중복 제거(제공량 변형 등) + 관련도 정렬
         var seen = Set<String>()
         let unique = mapped.filter { seen.insert($0.id).inserted }
-        return unique.sorted { rank($0.name, trimmed) < rank($1.name, trimmed) }
+        // 정렬: (관련도 단계, 이름 길이, 이름) 순 → 동점이면 짧은 이름(대표 음식)을 우선
+        return unique.sorted { sortKey($0.name, trimmed) < sortKey($1.name, trimmed) }
     }
 
-    private static func rank(_ name: String, _ q: String) -> Int {
-        if name == q { return 0 }
-        if name.hasPrefix(q) { return 1 }
-        return 2
+    private static func sortKey(_ name: String, _ q: String) -> (Int, Int, String) {
+        (matchTier(name, q), name.count, name)
+    }
+
+    /// 검색어 관련도 단계 (작을수록 상위). 이름은 '_', 공백, 괄호 등으로 토큰 분리해 판정한다.
+    private static func matchTier(_ name: String, _ q: String) -> Int {
+        if name == q { return 0 }                      // 완전일치
+        if name.hasPrefix(q) { return 1 }              // 이름이 검색어로 시작
+        let separators = CharacterSet(charactersIn: "_ /()-,·[]{}")
+        let tokens = name.components(separatedBy: separators).filter { !$0.isEmpty }
+        if tokens.contains(where: { $0 == q }) { return 2 }        // 토큰 완전일치
+        if tokens.contains(where: { $0.hasPrefix(q) }) { return 3 } // 토큰이 검색어로 시작
+        if name.contains(q) { return 4 }               // 부분 포함
+        return 5
     }
 }
 
