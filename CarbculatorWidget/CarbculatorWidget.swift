@@ -43,7 +43,7 @@ struct CarbEntry: TimelineEntry {
 
 // MARK: - Provider
 
-struct Provider: TimelineProvider {
+struct CarbProvider: TimelineProvider {
     func placeholder(in context: Context) -> CarbEntry { .sample }
 
     func getSnapshot(in context: Context, completion: @escaping (CarbEntry) -> Void) {
@@ -73,7 +73,7 @@ struct CarbculatorWidget: Widget {
     let kind = "CarbculatorWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+        StaticConfiguration(kind: kind, provider: CarbProvider()) { entry in
             CarbculatorWidgetView(entry: entry)
                 .containerBackground(for: .widget) { Color(.systemBackground) }
         }

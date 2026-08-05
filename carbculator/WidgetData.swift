@@ -13,7 +13,7 @@ import Foundation
 import WidgetKit
 
 enum WidgetData {
-    /// 앱·위젯이 공유하는 App Group 식별자
+    /// 앱·위젯이 공유하는 App Group 식별자 (앱·위젯 엔타이틀먼트와 반드시 일치)
     static let appGroup = "group.dev-choi.carbculator"
 
     enum Key {
