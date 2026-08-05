@@ -98,6 +98,9 @@ struct CalculatorView: View {
                 Text(lang.t("이 권장량은 참고용입니다. 실제 인슐린 투여는 반드시 담당 의료진의 처방과 지침에 따르세요.",
                             "This suggestion is for reference only. Always follow your doctor's prescription and guidance for actual insulin dosing."))
             }
+            // 위젯이 최신 탄수화물 계수를 표시하도록 동기화
+            .onAppear { WidgetData.updateICR(icr) }
+            .onChange(of: icr) { WidgetData.updateICR(icr) }
         }
     }
 
@@ -378,6 +381,8 @@ struct CalculatorView: View {
             return "\(food.item.name) \(w)g"
         }
         MealHistoryStore.add(MealRecord(foods: foods, carbs: carbs, insulin: result.totalRounded))
+        // 위젯 공유 데이터 갱신 (최근 식사·인슐린 + ICR)
+        WidgetData.updateLatest(icr: icr, foods: foods, insulin: result.totalRounded)
     }
 
     /// 검색어 변경 시 디바운스 후 API를 호출한다. (`.task(id:)`가 이전 호출을 취소)
