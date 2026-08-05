@@ -5,6 +5,3 @@ DerivedData/
 xcuserdata/
 *.moved-aside
 .DS_Store
-
-# 로컬 전용 비밀 값 (원격에 올리지 않음)
-carbculator/FoodAPIConfig.swift
