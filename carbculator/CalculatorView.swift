@@ -149,6 +149,23 @@ struct CalculatorView: View {
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
+
+                Divider()
+                    .padding(.vertical, 4)
+
+                Button {
+                    // 혈당을 모르면 목표 혈당으로 채워 교정 인슐린을 0으로 만든다.
+                    bgText = targetBG.display
+                    advance(to: .meal)
+                } label: {
+                    Label(lang.t("혈당을 몰라요 · 건너뛰기", "I don't know it · Skip"),
+                          systemImage: "arrow.uturn.right")
+                        .font(.subheadline)
+                }
+                Text(lang.t("건너뛰면 목표 혈당(\(targetBG.display) mg/dL)으로 계산해 교정 인슐린이 0이 됩니다.",
+                            "Skipping uses your target (\(targetBG.display) mg/dL), so the correction becomes 0."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
