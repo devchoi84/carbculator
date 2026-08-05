@@ -5,3 +5,6 @@ DerivedData/
 xcuserdata/
 *.moved-aside
 .DS_Store
+
+# 로컬 전용 개발일지 (원격에 올리지 않음)
+docs/DEVLOG.md
