@@ -36,6 +36,8 @@ struct StepPage<Content: View>: View {
     private let nextTitle: String
     private let isNextEnabled: Bool
     private let onNext: (() -> Void)?
+    private let secondaryTitle: String?
+    private let onSecondary: (() -> Void)?
     private let content: Content
 
     init(
@@ -44,6 +46,8 @@ struct StepPage<Content: View>: View {
         nextTitle: String = "다음",
         isNextEnabled: Bool = true,
         onNext: (() -> Void)? = nil,
+        secondaryTitle: String? = nil,
+        onSecondary: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
@@ -51,6 +55,8 @@ struct StepPage<Content: View>: View {
         self.nextTitle = nextTitle
         self.isNextEnabled = isNextEnabled
         self.onNext = onNext
+        self.secondaryTitle = secondaryTitle
+        self.onSecondary = onSecondary
         self.content = content()
     }
 
@@ -76,15 +82,29 @@ struct StepPage<Content: View>: View {
         // 다음 버튼은 하단 safe area에 고정한다. 이렇게 하면 키보드가 올라올 때
         // 버튼이 키보드 위로 함께 밀려 올라가 항상 탭할 수 있다.
         .safeAreaInset(edge: .bottom) {
-            if let onNext {
-                Button(action: onNext) {
-                    Text(nextTitle)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
+            // 다음 버튼과(있으면) 보조 버튼을 함께 하단에 고정 → 키보드 위로 함께 올라온다.
+            if onNext != nil || onSecondary != nil {
+                VStack(spacing: 8) {
+                    if let onNext {
+                        Button(action: onNext) {
+                            Text(nextTitle)
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .disabled(!isNextEnabled)
+                    }
+                    if let onSecondary, let secondaryTitle {
+                        Button(action: onSecondary) {
+                            Text(secondaryTitle)
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!isNextEnabled)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 8)
             }

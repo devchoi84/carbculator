@@ -45,6 +45,7 @@ struct CalculatorView: View {
     @State private var isSearching = false
     @State private var searchFailed = false
     @State private var selectedFoods: [SelectedFood] = []
+    @FocusState private var mealSearchFocused: Bool
 
     /// 한 끼에 선택한 음식 한 건. 같은 음식을 여러 번 담을 수 있도록 고유 id를 부여한다.
     private struct SelectedFood: Identifiable, Equatable {
@@ -141,6 +142,13 @@ struct CalculatorView: View {
                 // 저혈당이어도 막지 않고 진행한다. 낮은 혈당은 교정 인슐린으로
                 // 권장량에 자동 반영되며, 결과 화면에서 저혈당 주의를 안내한다.
                 advance(to: .meal)
+            },
+            // 건너뛰기 버튼은 하단 safe area에 두어 키보드가 올라와도 항상 눌린다.
+            secondaryTitle: lang.t("혈당을 몰라요 · 건너뛰기", "I don't know it · Skip"),
+            onSecondary: {
+                // 혈당을 모르면 목표 혈당으로 채워 교정 인슐린을 0으로 만든다.
+                bgText = targetBG.display
+                advance(to: .meal)
             }
         ) {
             VStack(alignment: .leading, spacing: 12) {
@@ -152,21 +160,8 @@ struct CalculatorView: View {
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
-
-                Divider()
-                    .padding(.vertical, 4)
-
-                Button {
-                    // 혈당을 모르면 목표 혈당으로 채워 교정 인슐린을 0으로 만든다.
-                    bgText = targetBG.display
-                    advance(to: .meal)
-                } label: {
-                    Label(lang.t("혈당을 몰라요 · 건너뛰기", "I don't know it · Skip"),
-                          systemImage: "arrow.uturn.right")
-                        .font(.subheadline)
-                }
-                Text(lang.t("건너뛰면 목표 혈당(\(targetBG.display) mg/dL)으로 계산해 교정 인슐린이 0이 됩니다.",
-                            "Skipping uses your target (\(targetBG.display) mg/dL), so the correction becomes 0."))
+                Text(lang.t("혈당을 모르면 아래 '건너뛰기'를 누르세요. 목표 혈당(\(targetBG.display) mg/dL)으로 계산해 교정 인슐린이 0이 됩니다.",
+                            "If you don't know it, tap 'Skip' below. It uses your target (\(targetBG.display) mg/dL), so the correction becomes 0."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -238,6 +233,11 @@ struct CalculatorView: View {
             }
             .task(id: foodQuery) { await performFoodSearch() }
             .onChange(of: selectedFoods) { syncCarbsFromFoods() }
+            .task {
+                // 페이지 전환이 끝난 뒤 검색창에 자동 포커스 (음식 검색 모드일 때)
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                if inputMode == .food { mealSearchFocused = true }
+            }
         }
     }
 
@@ -248,6 +248,7 @@ struct CalculatorView: View {
                 .foregroundStyle(.secondary)
             TextField(lang.t("음식 검색 (예: 쌀밥, 닭가슴살)", "Search food (e.g. rice)"),
                       text: $foodQuery)
+                .focused($mealSearchFocused)
             if !foodQuery.isEmpty {
                 Button {
                     foodQuery = ""
