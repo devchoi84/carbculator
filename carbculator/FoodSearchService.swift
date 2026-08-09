@@ -56,7 +56,10 @@ enum FoodSearchService {
             throw FoodSearchError.server(decoded.header?.resultMsg ?? "")
         }
 
-        let mapped = (decoded.body?.items ?? []).compactMap { $0.toFoodItem() }
+        // 소스·가루 등 제외 후 매핑
+        let mapped = (decoded.body?.items ?? [])
+            .filter { !$0.isExcludedItem }
+            .compactMap { $0.toFoodItem() }
         // 같은 이름은 하나만 남긴다. (같은 음식인데 탄수화물만 다른 중복 제거)
         // API가 먼저 반환한(대표) 값을 남기도록 정렬 전에 이름 기준으로 중복을 거른다.
         var seenNames = Set<String>()
@@ -106,9 +109,25 @@ private struct FoodAPIResponse: Decodable {
 private struct RawItem: Decodable {
     let FOOD_CD: String?
     let FOOD_NM_KR: String?
+    let FOOD_CAT1_NM: String?   // 대분류 (예: "밥류", "장류, 양념류")
     let SERVING_SIZE: String?
     let AMT_NUM1: String?   // 열량(kcal)
     let AMT_NUM6: String?   // 탄수화물(g)
+
+    /// 소스·가루 등 한 끼로 먹지 않는 조미료/원재료성 항목이면 true.
+    /// (대분류 카테고리 + 이름 첫 토큰 키워드 병행 판정. 필요에 따라 목록을 조정)
+    var isExcludedItem: Bool {
+        let name = FOOD_NM_KR ?? ""
+        // 1) 카테고리 기준 제외
+        let blockedCategories: Set<String> = ["장류, 양념류"]
+        if let cat = FOOD_CAT1_NM, blockedCategories.contains(cat) { return true }
+        // 2) 이름 첫 토큰(_ 앞 = 음식 종류) 기준 제외.
+        //    "스파게티_까르보나라소스"처럼 변형 부분에만 키워드가 있는 실제 요리는 남긴다.
+        let head = name.split(separator: "_").first.map(String.init) ?? name
+        let blockedKeywords = ["소스", "드레싱", "가루", "분말", "시즈닝", "양념장",
+                               "향신료", "조미료", "페이스트", "액젓", "젓갈"]
+        return blockedKeywords.contains { head.contains($0) }
+    }
 
     /// 제공량 기준 값을 100g 기준으로 정규화해 FoodItem으로 변환한다.
     func toFoodItem() -> FoodItem? {
