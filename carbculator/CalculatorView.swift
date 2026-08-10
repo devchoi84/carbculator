@@ -351,7 +351,9 @@ struct CalculatorView: View {
     }
 
     private func selectFood(_ item: FoodItem) {
-        selectedFoods.append(SelectedFood(item: item))
+        // 로컬 DB 항목은 1회 제공량(servingGrams)을 기본 섭취량으로, 그 외는 100g.
+        let weight = item.servingGrams.map { $0.display1 } ?? "100"
+        selectedFoods.append(SelectedFood(item: item, weightText: weight))
         syncCarbsFromFoods()
         // 다음 음식을 바로 검색할 수 있도록 검색어·결과를 비운다. (키보드는 유지)
         foodQuery = ""

@@ -12,10 +12,64 @@ import Foundation
 
 /// 검색 결과 한 건. 값은 모두 100g 기준으로 정규화되어 있다.
 struct FoodItem: Identifiable, Equatable {
-    let id: String            // FOOD_CD
+    let id: String            // FOOD_CD (또는 로컬 DB id)
     let name: String          // FOOD_NM_KR
     let carbsPer100g: Double   // 탄수화물(g) / 100g
     let kcalPer100g: Double?   // 열량(kcal) / 100g (참고용)
+    var servingGrams: Double? = nil   // 1회 제공량(g) — 로컬 DB에만 존재
+}
+
+// MARK: - 로컬 음식 DB (번들 포함, API보다 우선 조회)
+
+/// korean_food_db_1000.json 의 한 항목
+private struct LocalFood: Decodable {
+    let id: String
+    let foodName: String
+    let category: String
+    let servingSizeG: Double
+    let carbsPer100g: Double
+    let carbsPerServing: Double
+    let caloriesKcal: Double
+    let proteinG: Double
+    let fatG: Double
+}
+
+enum LocalFoodStore {
+    /// 앱 번들의 JSON을 한 번만 로드 (없으면 빈 배열 → API 폴백)
+    private static let all: [LocalFood] = {
+        guard let url = Bundle.main.url(forResource: "korean_food_db_1000", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let list = try? JSONDecoder().decode([LocalFood].self, from: data) else {
+            return []
+        }
+        return list
+    }()
+
+    /// 부분일치 검색 → 관련도 정렬 → FoodItem 매핑 (servingSizeG를 1회 제공량으로 전달)
+    static func search(_ query: String) -> [FoodItem] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return [] }
+        return all
+            .filter { $0.foodName.contains(q) }
+            .sorted { sortKey($0.foodName, q) < sortKey($1.foodName, q) }
+            .map {
+                FoodItem(
+                    id: $0.id,
+                    name: $0.foodName,
+                    carbsPer100g: $0.carbsPer100g,
+                    kcalPer100g: $0.caloriesKcal,
+                    servingGrams: $0.servingSizeG
+                )
+            }
+    }
+
+    private static func sortKey(_ name: String, _ q: String) -> (Int, Int, String) {
+        let tier: Int
+        if name == q { tier = 0 }
+        else if name.hasPrefix(q) { tier = 1 }
+        else { tier = 2 }
+        return (tier, name.count, name)
+    }
 }
 
 // MARK: - 검색 서비스
@@ -28,8 +82,14 @@ enum FoodSearchService {
     /// - Note: 취소된 경우 `CancellationError`를 던진다(호출부에서 무시하면 됨).
     static func search(_ query: String, numOfRows: Int = 100) async throws -> [FoodItem] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty,
-              let encodedName = trimmed.addingPercentEncoding(withAllowedCharacters: .foodQueryAllowed)
+        guard !trimmed.isEmpty else { return [] }
+
+        // 1) 로컬 DB 우선 조회 (즉시·오프라인). 결과가 있으면 그대로 사용.
+        let local = LocalFoodStore.search(trimmed)
+        if !local.isEmpty { return local }
+
+        // 2) 로컬에 없으면 식약처 API 폴백
+        guard let encodedName = trimmed.addingPercentEncoding(withAllowedCharacters: .foodQueryAllowed)
         else { return [] }
 
         // serviceKey는 이미 URL 인코딩된 값이므로 URLComponents로 재인코딩하지 않고
