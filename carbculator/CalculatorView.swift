@@ -85,7 +85,19 @@ struct CalculatorView: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button(lang.t("완료", "Done")) { hideKeyboard() }
+                    if step == .bloodGlucose {
+                        // 혈당 입력 중에는 키보드 위에서 바로 다음 단계로 진행할 수 있게 한다.
+                        Button {
+                            hideKeyboard()
+                            advance(to: .meal)
+                        } label: {
+                            Text(lang.t("확인", "Next"))
+                                .bold()
+                        }
+                        .disabled(bgValue == nil)
+                    } else {
+                        Button(lang.t("완료", "Done")) { hideKeyboard() }
+                    }
                 }
             }
             .sheet(isPresented: $showSettings) {
@@ -663,6 +675,9 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.isOnboarded) private var isOnboarded = false
     @AppStorage(SettingsKeys.language) private var languageRaw = AppLanguage.korean.rawValue
 
+    /// '초기 설정 다시 하기' 예약 플래그. 시트가 닫힌 뒤 onDisappear에서 적용한다.
+    @State private var pendingReset = false
+
     private var lang: AppLanguage { AppLanguage(rawValue: languageRaw) ?? .korean }
 
     var body: some View {
@@ -752,7 +767,9 @@ struct SettingsView: View {
                 }
                 Section {
                     Button(lang.t("초기 설정 다시 하기", "Redo initial setup"), role: .destructive) {
-                        isOnboarded = false
+                        // 시트가 떠 있는 상태에서 루트 화면을 교체하면 전환이 무시될 수 있어,
+                        // 먼저 시트를 닫고 onDisappear에서 온보딩으로 전환한다.
+                        pendingReset = true
                         dismiss()
                     }
                 } footer: {
@@ -766,6 +783,12 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(lang.t("완료", "Done")) { dismiss() }
                 }
+            }
+        }
+        .onDisappear {
+            // 시트가 완전히 닫힌 뒤에 온보딩으로 전환해야 루트 화면 교체가 정상 동작한다.
+            if pendingReset {
+                isOnboarded = false
             }
         }
     }
