@@ -33,6 +33,7 @@ struct CalculatorView: View {
     @State private var showSettings = false
     @State private var showHistory = false
     @State private var showResultDisclaimer = false
+    @State private var showReferences = false
 
     // 입력값
     @State private var bgText = ""
@@ -92,6 +93,16 @@ struct CalculatorView: View {
             }
             .sheet(isPresented: $showHistory) {
                 HistoryView()
+            }
+            .sheet(isPresented: $showReferences) {
+                NavigationStack {
+                    ReferencesView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(lang.t("완료", "Done")) { showReferences = false }
+                            }
+                        }
+                }
             }
             .alert(lang.t("참고용 안내", "Please note"), isPresented: $showResultDisclaimer) {
                 Button(lang.t("확인", "OK")) { resultDisclaimerShown = true }
@@ -514,6 +525,15 @@ struct CalculatorView: View {
         )
 
         Button {
+            showReferences = true
+        } label: {
+            Label(lang.t("계산 근거 및 정보 출처 보기", "View calculation basis & sources"),
+                  systemImage: "text.book.closed")
+                .font(.footnote)
+        }
+        .padding(.top, 4)
+
+        Button {
             restart()
         } label: {
             Text(lang.t("새로 계산하기", "Start over"))
@@ -702,6 +722,18 @@ struct SettingsView: View {
                         Text("0.5 U").tag(0.5)
                     }
                     .pickerStyle(.segmented)
+                }
+                Section {
+                    NavigationLink {
+                        ReferencesView()
+                    } label: {
+                        Label(lang.t("정보 출처", "References"), systemImage: "text.book.closed")
+                    }
+                } header: {
+                    Text(lang.t("정보 출처", "References"))
+                } footer: {
+                    Text(lang.t("계산과 안내가 참고한 의학 정보의 출처를 확인할 수 있습니다.",
+                                "See the sources for the medical information behind the calculations and guidance."))
                 }
                 Section {
                     Link(destination: URL(string: "mailto:maroon.choi@gmail.com")!) {
