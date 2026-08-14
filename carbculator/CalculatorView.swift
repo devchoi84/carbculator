@@ -469,9 +469,20 @@ struct CalculatorView: View {
         }
 
         VStack(spacing: 8) {
-            Text(lang.t("권장 인슐린", "Suggested insulin"))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(lang.t("권장 인슐린", "Suggested insulin"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                // ⓘ: 계산 근거·의학 정보 출처 화면으로 연결 (1.4.1)
+                Button {
+                    showReferences = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+            }
             Text("\(result.totalRounded.display) U")
                 .font(.system(size: 56, weight: .bold, design: .rounded))
                 .foregroundStyle(.blue)
@@ -701,8 +712,12 @@ struct SettingsView: View {
                 } header: {
                     Text(lang.t("탄수화물 계수 (ICR)", "Carb ratio (ICR)"))
                 } footer: {
-                    Text(lang.t("탭하면 수정 페이지로 이동합니다. 밥 양·처방 기준·하루 총 인슐린으로 다시 계산할 수 있습니다.",
-                                "Tap to open the edit page. You can recalculate from your usual meal, prescription, or total daily insulin."))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(lang.t("탭하면 수정 페이지로 이동합니다. 밥 양·처방 기준·하루 총 인슐린으로 다시 계산할 수 있습니다.",
+                                    "Tap to open the edit page. You can recalculate from your usual meal, prescription, or total daily insulin."))
+                        SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터", "Source: UCSF Diabetes Teaching Center"),
+                                   url: MedicalSources.insulinDoseCalc)
+                    }
                 }
                 Section {
                     Toggle(lang.t("교정 인슐린 사용", "Use correction bolus"), isOn: $correctionEnabled)
@@ -717,11 +732,15 @@ struct SettingsView: View {
                 } header: {
                     Text(lang.t("인슐린 민감도 지수 (ISF)", "Insulin sensitivity factor (ISF)"))
                 } footer: {
-                    Text(correctionEnabled
-                         ? lang.t("인슐린 1단위가 혈당을 몇 mg/dL 낮추는지 나타내는 값입니다.",
-                                  "How much 1 unit of insulin lowers your blood glucose (mg/dL).")
-                         : lang.t("ISF를 모르면 끈 상태로 두세요. 교정 인슐린 없이 식사 인슐린만 계산합니다.",
-                                  "Leave off if you don't know your ISF. Only meal insulin will be calculated."))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(correctionEnabled
+                             ? lang.t("인슐린 1단위가 혈당을 몇 mg/dL 낮추는지 나타내는 값입니다.",
+                                      "How much 1 unit of insulin lowers your blood glucose (mg/dL).")
+                             : lang.t("ISF를 모르면 끈 상태로 두세요. 교정 인슐린 없이 식사 인슐린만 계산합니다.",
+                                      "Leave off if you don't know your ISF. Only meal insulin will be calculated."))
+                        SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터", "Source: UCSF Diabetes Teaching Center"),
+                                   url: MedicalSources.insulinDoseCalc)
+                    }
                 }
                 Section(lang.t("목표 혈당", "Target blood glucose")) {
                     HStack {

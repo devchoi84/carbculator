@@ -8,6 +8,31 @@
 
 import SwiftUI
 
+// MARK: - 출처 URL 상수 (페이지 내 ⓘ 링크와 출처 화면이 공유)
+
+enum MedicalSources {
+    /// UCSF Diabetes Teaching Center — 인슐린 용량 공식, 500/1800 법칙
+    static let insulinDoseCalc = URL(string: "https://diabetesteachingcenter.ucsf.edu/about-diabetes/type-2-diabetes/use-insulin-type-2-diabetes/calculating-insulin-dose")!
+    /// ADA — 저혈당 대응
+    static let hypoglycemia = URL(string: "https://diabetes.org/living-with-diabetes/hypoglycemia-low-blood-glucose")!
+}
+
+// MARK: - 페이지 내 출처 링크 (ⓘ + 라벨)
+
+/// 개별 페이지에서 관련 출처로 바로 연결하는 작은 인라인 링크.
+struct SourceLink: View {
+    let label: String
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            Label(label, systemImage: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.blue)
+        }
+    }
+}
+
 struct ReferenceItem: Identifiable {
     let id = UUID()
     let title: String

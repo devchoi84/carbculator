@@ -167,6 +167,11 @@ struct OnboardingView: View {
                     method = .tdd
                     advance(to: .icrInput)
                 }
+
+                SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터 (탄수화물 계수·500의 법칙)",
+                                         "Source: UCSF Diabetes Teaching Center (carb ratio · 500 rule)"),
+                           url: MedicalSources.insulinDoseCalc)
+                    .padding(.top, 4)
             }
         }
     }
@@ -326,6 +331,11 @@ struct OnboardingView: View {
                     isfMethod = .skip
                     advance(to: .penUnit)
                 }
+
+                SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터 (민감도 지수·1800의 법칙)",
+                                         "Source: UCSF Diabetes Teaching Center (ISF · 1800 rule)"),
+                           url: MedicalSources.insulinDoseCalc)
+                    .padding(.top, 4)
             }
         }
     }

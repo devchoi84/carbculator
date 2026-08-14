@@ -64,8 +64,13 @@ struct ICREditView: View {
                 Button(lang.t("저장", "Save")) { save() }
                     .disabled(newICR == nil)
             } footer: {
-                Text(lang.t("역산/추정으로 구한 계수는 시작점입니다. 식후 혈당 반응을 보며 담당 의료진과 함께 조정하세요.",
-                            "A recalculated or estimated ratio is a starting point. Adjust it with your care team based on your post-meal glucose."))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(lang.t("역산/추정으로 구한 계수는 시작점입니다. 식후 혈당 반응을 보며 담당 의료진과 함께 조정하세요.",
+                                "A recalculated or estimated ratio is a starting point. Adjust it with your care team based on your post-meal glucose."))
+                    SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터 (탄수화물 계수·500의 법칙)",
+                                             "Source: UCSF Diabetes Teaching Center (carb ratio · 500 rule)"),
+                               url: MedicalSources.insulinDoseCalc)
+                }
             }
         }
         .navigationTitle(lang.t("탄수화물 계수 수정", "Edit carb ratio"))
