@@ -284,6 +284,9 @@ struct OnboardingView: View {
                         text: lang.t("500의 법칙에 따른 의학적 추정치입니다. 실제 적용 전 담당 의료진과 상의하세요.",
                                      "A medical estimate based on the 500 rule. Consult your care team before applying.")
                     )
+                    SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터 (500의 법칙)",
+                                             "Source: UCSF Diabetes Teaching Center (500 rule)"),
+                               url: MedicalSources.insulinDoseCalc)
                 }
             }
         }
@@ -372,6 +375,9 @@ struct OnboardingView: View {
                         text: lang.t("500·1800 법칙의 비율(ICR × 3.6)에 따른 추정치로, 실제 민감도와 다를 수 있습니다. 처음에는 식후 혈당이 낮아지지 않는지 잘 지켜보고, 담당 의료진과 함께 조정하세요.",
                                      "An estimate based on the 500/1800 rule ratio (ICR × 3.6); your actual sensitivity may differ. Watch for low readings at first and adjust with your care team.")
                     )
+                    SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터 (500·1800의 법칙)",
+                                             "Source: UCSF Diabetes Teaching Center (500/1800 rules)"),
+                               url: MedicalSources.insulinDoseCalc)
                 }
             }
         case .tdd:
@@ -397,6 +403,9 @@ struct OnboardingView: View {
                         text: lang.t("1800의 법칙에 따른 의학적 추정치입니다. 실제 적용 전 담당 의료진과 상의하세요.",
                                      "A medical estimate based on the 1800 rule. Consult your care team before applying.")
                     )
+                    SourceLink(label: lang.t("출처: UCSF 당뇨 교육센터 (1800의 법칙)",
+                                             "Source: UCSF Diabetes Teaching Center (1800 rule)"),
+                               url: MedicalSources.insulinDoseCalc)
                 }
             }
         }
