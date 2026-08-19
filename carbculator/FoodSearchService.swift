@@ -35,18 +35,15 @@ private struct LocalFood: Decodable {
 }
 
 enum LocalFoodStore {
-    /// 앱 번들의 JSON들을 한 번만 로드해 합친다. (없으면 빈 배열 → API 폴백)
-    /// - korean_food_db: 일반 한식 + 프랜차이즈 외식 메뉴 (식약처 음식 DB 기반)
-    /// - franchise_food_db: 배달·간식·가공식품 선별 DB (식약처 통합 DB에서 추출)
+    /// 앱 번들의 통합 음식 DB를 한 번만 로드한다. (없으면 빈 배열 → API 폴백)
+    /// korean_food_db.json: 한식 + 프랜차이즈 외식 + 배달·간식 가공식품 (식약처 DB 기반 선별)
     private static let all: [LocalFood] = {
-        ["korean_food_db", "franchise_food_db"].flatMap { name -> [LocalFood] in
-            guard let url = Bundle.main.url(forResource: name, withExtension: "json"),
-                  let data = try? Data(contentsOf: url),
-                  let list = try? JSONDecoder().decode([LocalFood].self, from: data) else {
-                return []
-            }
-            return list
+        guard let url = Bundle.main.url(forResource: "korean_food_db", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let list = try? JSONDecoder().decode([LocalFood].self, from: data) else {
+            return []
         }
+        return list
     }()
 
     /// 부분일치 검색 → 관련도 정렬 → FoodItem 매핑 (servingSizeG를 1회 제공량으로 전달)
