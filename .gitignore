@@ -8,3 +8,6 @@ xcuserdata/
 
 # 로컬 전용 개발일지 (원격에 올리지 않음)
 docs/DEVLOG.md
+
+# 대용량 원본 데이터 (선별본만 앱에 포함)
+data/
