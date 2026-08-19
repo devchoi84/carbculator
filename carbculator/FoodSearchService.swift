@@ -21,7 +21,7 @@ struct FoodItem: Identifiable, Equatable {
 
 // MARK: - 로컬 음식 DB (번들 포함, API보다 우선 조회)
 
-/// korean_food_db_1000.json 의 한 항목
+/// 로컬 음식 DB(korean_food_db.json 등)의 한 항목
 private struct LocalFood: Decodable {
     let id: String
     let foodName: String
@@ -36,10 +36,10 @@ private struct LocalFood: Decodable {
 
 enum LocalFoodStore {
     /// 앱 번들의 JSON들을 한 번만 로드해 합친다. (없으면 빈 배열 → API 폴백)
-    /// - korean_food_db_1000: 일반 한식 큐레이션 DB
+    /// - korean_food_db: 일반 한식 + 프랜차이즈 외식 메뉴 (식약처 음식 DB 기반)
     /// - franchise_food_db: 배달·간식·가공식품 선별 DB (식약처 통합 DB에서 추출)
     private static let all: [LocalFood] = {
-        ["korean_food_db_1000", "franchise_food_db"].flatMap { name -> [LocalFood] in
+        ["korean_food_db", "franchise_food_db"].flatMap { name -> [LocalFood] in
             guard let url = Bundle.main.url(forResource: name, withExtension: "json"),
                   let data = try? Data(contentsOf: url),
                   let list = try? JSONDecoder().decode([LocalFood].self, from: data) else {
