@@ -362,6 +362,13 @@ struct CalculatorView: View {
                             .font(.subheadline)
                             .foregroundStyle(.blue)
                     }
+                    // 다인분 제품(제공량이 상한 초과)은 전체 중량을 알려 실제 먹는 양으로 조정하도록 안내
+                    if let total = sel.item.servingGrams, total > Self.defaultWeightCap {
+                        Text(lang.t("제품 전체 \(total.display1)g 기준 데이터입니다. 실제 드시는 양으로 조정하세요.",
+                                    "Data is for the whole product (\(total.display1) g). Adjust to what you actually eat."))
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
                 }
                 .padding(.vertical, 10)
                 .padding(.horizontal, 12)
@@ -373,9 +380,14 @@ struct CalculatorView: View {
         .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 
+    /// 자동 입력 섭취량 상한(g). 피자 한 판·치킨 한 마리처럼 데이터의 제공량이
+    /// "제품 전체 중량"인 다인분 항목이 그대로 들어가 인슐린이 과다 산출되는 것을 막는다.
+    private static let defaultWeightCap: Double = 300
+
     private func selectFood(_ item: FoodItem) {
         // 로컬 DB 항목은 1회 제공량(servingGrams)을 기본 섭취량으로, 그 외는 100g.
-        let weight = item.servingGrams.map { $0.display1 } ?? "100"
+        // 단, 다인분 제품 보호를 위해 기본값은 상한(300g)까지만 자동 입력한다.
+        let weight = item.servingGrams.map { min($0, Self.defaultWeightCap).display1 } ?? "100"
         selectedFoods.append(SelectedFood(item: item, weightText: weight))
         syncCarbsFromFoods()
         // 다음 음식을 바로 검색할 수 있도록 검색어·결과를 비운다. (키보드는 유지)
